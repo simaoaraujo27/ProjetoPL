@@ -29,7 +29,6 @@ t_STAR    = r'\*'
 
 # 3. Palavras-chave como funções
 def t_PROGRAM(t): r'PROGRAM'; return t
-def t_END(t): r'END'; return t
 def t_INTEGER(t): r'INTEGER'; return t
 def t_REAL(t): r'REAL'; return t
 def t_DOUBLE(t): r'DOUBLE'; return t
@@ -46,6 +45,7 @@ def t_IF(t): r'IF'; return t
 def t_THEN(t): r'THEN'; return t
 def t_ELSE(t): r'ELSE'; return t
 def t_ENDIF(t): r'ENDIF'; return t
+def t_END(t): r'END'; return t
 def t_DO(t): r'DO'; return t
 def t_CONTINUE(t): r'CONTINUE'; return t
 def t_GOTO(t): r'GOTO'; return t
