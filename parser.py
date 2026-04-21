@@ -115,16 +115,54 @@ def p_statement(p):
               | label_opt write_stmt
               | label_opt read_stmt
               | label_opt if_stmt
+              | label_opt arithmetic_if_stmt
               | label_opt do_stmt
               | label_opt continue_stmt
               | label_opt goto_stmt
+              | label_opt computed_goto_stmt
               | label_opt call_stmt
               | label_opt return_stmt
+              | label_opt stop_stmt
+              | label_opt pause_stmt
               | label_opt dimension_stmt
               | label_opt parameter_stmt
               | label_opt data_stmt
     """
     p[0] = Node('Statement', value=p[1], children=[p[2]])
+
+def p_stop_stmt(p):
+    r"""
+    stop_stmt : STOP INT_CONST
+              | STOP STRING_CONST
+              | STOP
+    """
+    p[0] = Node('Stop', value=p[2] if len(p) > 2 else None)
+
+def p_pause_stmt(p):
+    r"""
+    pause_stmt : PAUSE INT_CONST
+               | PAUSE STRING_CONST
+               | PAUSE
+    """
+    p[0] = Node('Pause', value=p[2] if len(p) > 2 else None)
+
+def p_arithmetic_if_stmt(p):
+    r"arithmetic_if_stmt : IF LPAREN expr RPAREN INT_CONST COMMA INT_CONST COMMA INT_CONST"
+    p[0] = Node('ArithmeticIf', value=[p[5], p[7], p[9]], children=[p[3]])
+
+def p_computed_goto_stmt(p):
+    r"computed_goto_stmt : GOTO LPAREN label_list RPAREN comma_opt expr"
+    p[0] = Node('ComputedGoto', value=p[3], children=[p[6]])
+
+def p_label_list(p):
+    r"""
+    label_list : label_list COMMA INT_CONST
+               | INT_CONST
+    """
+    if len(p) == 4:
+        p[0] = p[1] + [p[3]]
+    else:
+        p[0] = [p[1]]
 
 def p_label_opt(p):
     r"""
@@ -290,9 +328,16 @@ def p_assignment(p):
     else:
         p[0] = Node('ArrayAssignment', value=p[1], children=[p[3], p[6]])
 
+def p_comma_opt(p):
+    r"""
+    comma_opt : COMMA
+              | empty
+    """
+    pass
+
 def p_print_stmt(p):
     r"""
-    print_stmt : PRINT STAR COMMA print_list
+    print_stmt : PRINT STAR comma_opt print_list
                | PRINT STAR
     """
     if len(p) == 5:
@@ -338,7 +383,7 @@ def p_io_format(p):
 
 def p_read_stmt(p):
     r"""
-    read_stmt : READ STAR COMMA print_list
+    read_stmt : READ STAR comma_opt print_list
               | READ LPAREN io_unit COMMA io_format RPAREN print_list
               | READ LPAREN io_unit COMMA io_format RPAREN
     """
@@ -364,13 +409,13 @@ def p_if_stmt(p):
 
 def p_do_stmt(p):
     r"""
-    do_stmt : DO INT_CONST ID ASSIGN expr COMMA expr
-            | DO INT_CONST ID ASSIGN expr COMMA expr COMMA expr
+    do_stmt : DO INT_CONST comma_opt ID ASSIGN expr COMMA expr
+            | DO INT_CONST comma_opt ID ASSIGN expr COMMA expr COMMA expr
     """
-    if len(p) == 8:
-        p[0] = Node('Do', value={'label': p[2], 'var': p[3]}, children=[p[5], p[7]])
+    if len(p) == 9:
+        p[0] = Node('Do', value={'label': p[2], 'var': p[4]}, children=[p[6], p[8]])
     else:
-        p[0] = Node('Do', value={'label': p[2], 'var': p[3]}, children=[p[5], p[7], p[9]])
+        p[0] = Node('Do', value={'label': p[2], 'var': p[4]}, children=[p[6], p[8], p[10]])
 
 def p_continue_stmt(p):
     r"continue_stmt : CONTINUE"

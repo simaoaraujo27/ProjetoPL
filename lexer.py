@@ -10,7 +10,7 @@ reserved = {
     'IF': 'IF', 'THEN': 'THEN', 'ELSE': 'ELSE', 'ENDIF': 'ENDIF', 
     'DO': 'DO', 'CONTINUE': 'CONTINUE', 'GOTO': 'GOTO', 'CALL': 'CALL', 
     'SUBROUTINE': 'SUBROUTINE', 'FUNCTION': 'FUNCTION', 'RETURN': 'RETURN', 
-    'MOD': 'MOD', 'WRITE': 'WRITE',
+    'MOD': 'MOD', 'WRITE': 'WRITE', 'STOP': 'STOP', 'PAUSE': 'PAUSE',
 }
 
 # Lista de tokens
@@ -47,6 +47,22 @@ def t_NOT(t): r'\.NOT\.'; return t
 def t_TRUE(t): r'\.TRUE\.'; return t
 def t_FALSE(t): r'\.FALSE\.'; return t
 
+# Regras para palavras compostas (devem vir ANTES de t_ID)
+def t_DOUBLE_PRECISION(t):
+    r'DOUBLE\s+PRECISION'
+    t.type = 'PRECISION'
+    return t
+
+def t_END_IF(t):
+    r'END\s+IF'
+    t.type = 'ENDIF'
+    return t
+
+def t_GO_TO(t):
+    r'GO\s+TO'
+    t.type = 'GOTO'
+    return t
+
 # Comentários (ignorar)
 def t_COMMENT(t):
     r'^[C\*c].*|!.*'
@@ -77,10 +93,9 @@ def t_STRING_CONST(t):
 # Regras de controlo
 t_ignore = ' \t\r'
 
-def t_newline(t):
+def t_NEWLINE(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
-    t.type = 'NEWLINE'
     return t
 
 class LexError(Exception):
