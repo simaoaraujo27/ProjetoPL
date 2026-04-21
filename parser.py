@@ -31,11 +31,11 @@ def p_start(p):
 
 def p_program_unit_list(p):
     r"""
-    program_unit_list : program_unit program_unit_list
+    program_unit_list : program_unit_list program_unit
                       | program_unit
     """
     if len(p) == 3:
-        p[0] = [p[1]] + p[2]
+        p[0] = p[1] + [p[2]]
     else:
         p[0] = [p[1]]
 
@@ -52,33 +52,38 @@ def p_main_program(p):
     p[0] = Node('MainProgram', value=p[2], children=p[3])
 
 def p_subroutine_definition(p):
-    r"subroutine_definition : SUBROUTINE ID LPAREN param_list RPAREN statement_list END"
+    r"subroutine_definition : SUBROUTINE ID LPAREN param_list_opt RPAREN statement_list END"
     p[0] = Node('SubroutineDef', value=p[2], children=[p[4], p[6]])
 
 def p_function_definition(p):
-    r"function_definition : type FUNCTION ID LPAREN param_list RPAREN statement_list END"
+    r"function_definition : type FUNCTION ID LPAREN param_list_opt RPAREN statement_list END"
     p[0] = Node('FunctionDef', value={'type': p[1], 'name': p[3]}, children=[p[5], p[7]])
+
+def p_param_list_opt(p):
+    r"""
+    param_list_opt : param_list
+                   | empty
+    """
+    p[0] = p[1] if p[1] else []
 
 def p_param_list(p):
     r"""
-    param_list : ID COMMA param_list
+    param_list : param_list COMMA ID
                | ID
-               | empty
     """
     if len(p) == 4:
-        p[0] = [Node('ID', value=p[1])] + p[3]
-    elif len(p) == 2 and p[1] is not None:
-        p[0] = [Node('ID', value=p[1])]
+        p[0] = p[1] + [Node('ID', value=p[3])]
     else:
-        p[0] = []
+        p[0] = [Node('ID', value=p[1])]
 
 def p_statement_list(p):
     r"""
-    statement_list : statement statement_list
+    statement_list : statement_list statement
                    | empty
     """
     if len(p) == 3:
-        p[0] = [p[1]] + p[2]
+        if p[1] is None: p[1] = []
+        p[0] = p[1] + [p[2]]
     else:
         p[0] = []
 
@@ -129,11 +134,11 @@ def p_type(p):
 
 def p_id_list_decl(p):
     r"""
-    id_list_decl : id_decl COMMA id_list_decl
+    id_list_decl : id_list_decl COMMA id_decl
                  | id_decl
     """
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
 
@@ -149,11 +154,11 @@ def p_id_decl(p):
 
 def p_dim_list(p):
     r"""
-    dim_list : dim_spec COMMA dim_list
+    dim_list : dim_list COMMA dim_spec
              | dim_spec
     """
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
 
@@ -168,6 +173,8 @@ def p_dim_spec(p):
     else:
         p[0] = p[1]
 
+# --- Comandos Extras ---
+
 def p_dimension_stmt(p):
     r"dimension_stmt : DIMENSION id_list_decl"
     p[0] = Node('Dimension', children=p[2])
@@ -178,11 +185,11 @@ def p_parameter_stmt(p):
 
 def p_param_assign_list(p):
     r"""
-    param_assign_list : param_assign COMMA param_assign_list
+    param_assign_list : param_assign_list COMMA param_assign
                       | param_assign
     """
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
 
@@ -196,11 +203,11 @@ def p_data_stmt(p):
 
 def p_data_set_list(p):
     r"""
-    data_set_list : data_set data_set_list
+    data_set_list : data_set_list COMMA data_set
                   | data_set
     """
-    if len(p) == 3:
-        p[0] = [p[1]] + p[2]
+    if len(p) == 4:
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
 
@@ -210,13 +217,39 @@ def p_data_set(p):
 
 def p_val_list(p):
     r"""
-    val_list : expr COMMA val_list
-             | expr
+    val_list : val_list COMMA data_val
+             | data_val
     """
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
+
+def p_data_val(p):
+    r"""
+    data_val : INT_CONST STAR constant
+             | constant
+    """
+    if len(p) == 4:
+        p[0] = Node('RepeatValue', value=p[1], children=[p[3]])
+    else:
+        p[0] = p[1]
+
+def p_constant(p):
+    r"""
+    constant : INT_CONST
+             | REAL_CONST
+             | STRING_CONST
+             | TRUE
+             | FALSE
+             | PLUS constant
+             | MINUS constant
+             | ID
+    """
+    if len(p) == 2:
+        p[0] = Node('Literal', value=p[1])
+    else:
+        p[0] = Node('UnOp', value=p[1], children=[p[2]])
 
 # --- Comandos Base ---
 
@@ -242,11 +275,11 @@ def p_print_stmt(p):
 
 def p_print_list(p):
     r"""
-    print_list : expr COMMA print_list
+    print_list : print_list COMMA expr
                | expr
     """
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
 
@@ -283,7 +316,7 @@ def p_goto_stmt(p):
     p[0] = Node('Goto', value=p[2])
 
 def p_call_stmt(p):
-    r"call_stmt : CALL ID LPAREN arg_list RPAREN"
+    r"call_stmt : CALL ID LPAREN arg_list_opt RPAREN"
     p[0] = Node('Call', value=p[2], children=p[4])
 
 def p_return_stmt(p):
@@ -324,8 +357,8 @@ def p_expr_group(p):
 
 def p_expr_func_call(p):
     r"""
-    expr : ID LPAREN arg_list RPAREN
-         | MOD LPAREN arg_list RPAREN
+    expr : ID LPAREN arg_list_opt RPAREN
+         | MOD LPAREN arg_list_opt RPAREN
     """
     p[0] = Node('CallOrArrayAccess', value=p[1], children=p[3])
 
@@ -340,18 +373,22 @@ def p_expr_primary(p):
     """
     p[0] = Node('Literal', value=p[1])
 
+def p_arg_list_opt(p):
+    r"""
+    arg_list_opt : arg_list
+                 | empty
+    """
+    p[0] = p[1] if p[1] else []
+
 def p_arg_list(p):
     r"""
-    arg_list : arg_spec COMMA arg_list
+    arg_list : arg_list COMMA arg_spec
              | arg_spec
-             | empty
     """
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
-    elif len(p) == 2 and p[1] is not None:
-        p[0] = [p[1]]
+        p[0] = p[1] + [p[3]]
     else:
-        p[0] = []
+        p[0] = [p[1]]
 
 def p_arg_spec(p):
     r"""
