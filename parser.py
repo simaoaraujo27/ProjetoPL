@@ -26,16 +26,23 @@ precedence = (
 )
 
 def p_start(p):
-    r"start : program_unit_list"
-    p[0] = p[1]
+    r"start : optional_newlines program_unit_list optional_newlines"
+    p[0] = p[2]
+
+def p_optional_newlines(p):
+    r"""
+    optional_newlines : optional_newlines NEWLINE
+                      | empty
+    """
+    pass
 
 def p_program_unit_list(p):
     r"""
-    program_unit_list : program_unit_list program_unit
+    program_unit_list : program_unit_list optional_newlines program_unit
                       | program_unit
     """
-    if len(p) == 3:
-        p[0] = p[1] + [p[2]]
+    if len(p) == 4:
+        p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
 
@@ -48,16 +55,16 @@ def p_program_unit(p):
     p[0] = p[1]
 
 def p_main_program(p):
-    r"main_program : PROGRAM ID statement_list END"
-    p[0] = Node('MainProgram', value=p[2], children=p[3])
+    r"main_program : PROGRAM ID NEWLINE statement_list END"
+    p[0] = Node('MainProgram', value=p[2], children=p[4])
 
 def p_subroutine_definition(p):
-    r"subroutine_definition : SUBROUTINE ID LPAREN param_list_opt RPAREN statement_list END"
-    p[0] = Node('SubroutineDef', value=p[2], children=[p[4], p[6]])
+    r"subroutine_definition : SUBROUTINE ID LPAREN param_list_opt RPAREN NEWLINE statement_list END"
+    p[0] = Node('SubroutineDef', value=p[2], children=[p[4], p[7]])
 
 def p_function_definition(p):
-    r"function_definition : type FUNCTION ID LPAREN param_list_opt RPAREN statement_list END"
-    p[0] = Node('FunctionDef', value={'type': p[1], 'name': p[3]}, children=[p[5], p[7]])
+    r"function_definition : type FUNCTION ID LPAREN param_list_opt RPAREN NEWLINE statement_list END"
+    p[0] = Node('FunctionDef', value={'type': p[1], 'name': p[3]}, children=[p[5], p[8]])
 
 def p_param_list_opt(p):
     r"""
@@ -78,20 +85,34 @@ def p_param_list(p):
 
 def p_statement_list(p):
     r"""
-    statement_list : statement_list statement
+    statement_list : statement_list statement_entry
                    | empty
     """
     if len(p) == 3:
         if p[1] is None: p[1] = []
-        p[0] = p[1] + [p[2]]
+        if p[2] is not None:
+            p[0] = p[1] + [p[2]]
+        else:
+            p[0] = p[1]
     else:
         p[0] = []
+
+def p_statement_entry(p):
+    r"""
+    statement_entry : statement NEWLINE
+                    | NEWLINE
+    """
+    if len(p) == 3:
+        p[0] = p[1]
+    else:
+        p[0] = None
 
 def p_statement(p):
     r"""
     statement : label_opt declaration
               | label_opt assignment
               | label_opt print_stmt
+              | label_opt write_stmt
               | label_opt read_stmt
               | label_opt if_stmt
               | label_opt do_stmt
@@ -203,13 +224,19 @@ def p_data_stmt(p):
 
 def p_data_set_list(p):
     r"""
-    data_set_list : data_set_list COMMA data_set
-                  | data_set
+    data_set_list : data_set data_set_list_tail
+    """
+    p[0] = [p[1]] + p[2]
+
+def p_data_set_list_tail(p):
+    r"""
+    data_set_list_tail : COMMA data_set data_set_list_tail
+                       | empty
     """
     if len(p) == 4:
-        p[0] = p[1] + [p[3]]
+        p[0] = [p[2]] + p[3]
     else:
-        p[0] = [p[1]]
+        p[0] = []
 
 def p_data_set(p):
     r"data_set : id_list_decl DIVIDE val_list DIVIDE"
@@ -283,29 +310,67 @@ def p_print_list(p):
     else:
         p[0] = [p[1]]
 
+def p_write_stmt(p):
+    r"""
+    write_stmt : WRITE LPAREN io_unit COMMA io_format RPAREN print_list
+               | WRITE LPAREN io_unit COMMA io_format RPAREN
+    """
+    if len(p) == 8:
+        p[0] = Node('Write', value={'unit': p[3], 'fmt': p[5]}, children=p[7])
+    else:
+        p[0] = Node('Write', value={'unit': p[3], 'fmt': p[5]})
+
+def p_io_unit(p):
+    r"""
+    io_unit : STAR
+            | INT_CONST
+            | ID
+    """
+    p[0] = p[1]
+
+def p_io_format(p):
+    r"""
+    io_format : STAR
+              | INT_CONST
+              | ID
+    """
+    p[0] = p[1]
+
 def p_read_stmt(p):
     r"""
-    read_stmt : READ STAR COMMA ID
-              | READ STAR COMMA ID LPAREN arg_list RPAREN
+    read_stmt : READ STAR COMMA print_list
+              | READ LPAREN io_unit COMMA io_format RPAREN print_list
+              | READ LPAREN io_unit COMMA io_format RPAREN
     """
     if len(p) == 5:
-        p[0] = Node('Read', value=p[4])
+        p[0] = Node('Read', children=p[4])
+    elif len(p) == 8:
+        p[0] = Node('Read', value={'unit': p[3], 'fmt': p[5]}, children=p[7])
     else:
-        p[0] = Node('ArrayRead', value=p[4], children=[p[6]])
+        p[0] = Node('Read', value={'unit': p[3], 'fmt': p[5]})
 
 def p_if_stmt(p):
     r"""
     if_stmt : IF LPAREN expr RPAREN THEN statement_list ELSE statement_list ENDIF
             | IF LPAREN expr RPAREN THEN statement_list ENDIF
+            | IF LPAREN expr RPAREN statement
     """
     if len(p) == 10:
         p[0] = Node('If', children=[p[3], p[6], p[8]])
-    else:
+    elif len(p) == 8:
         p[0] = Node('If', children=[p[3], p[6]])
+    else:
+        p[0] = Node('LogicalIf', children=[p[3], p[5]])
 
 def p_do_stmt(p):
-    r"do_stmt : DO INT_CONST ID ASSIGN expr COMMA expr"
-    p[0] = Node('Do', value={'label': p[2], 'var': p[3]}, children=[p[5], p[7]])
+    r"""
+    do_stmt : DO INT_CONST ID ASSIGN expr COMMA expr
+            | DO INT_CONST ID ASSIGN expr COMMA expr COMMA expr
+    """
+    if len(p) == 8:
+        p[0] = Node('Do', value={'label': p[2], 'var': p[3]}, children=[p[5], p[7]])
+    else:
+        p[0] = Node('Do', value={'label': p[2], 'var': p[3]}, children=[p[5], p[7], p[9]])
 
 def p_continue_stmt(p):
     r"continue_stmt : CONTINUE"
