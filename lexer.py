@@ -48,11 +48,6 @@ def t_TRUE(t): r'\.TRUE\.'; return t
 def t_FALSE(t): r'\.FALSE\.'; return t
 
 # Regras para palavras compostas (devem vir ANTES de t_ID)
-def t_DOUBLE_PRECISION(t):
-    r'DOUBLE\s+PRECISION'
-    t.type = 'PRECISION'
-    return t
-
 def t_END_IF(t):
     r'END\s+IF'
     t.type = 'ENDIF'
@@ -71,7 +66,8 @@ def t_COMMENT(t):
 # Identificadores (com verificação de keywords)
 def t_ID(t):
     r'[a-zA-Z][a-zA-Z0-9_]*'
-    t.type = reserved.get(t.value.upper(), 'ID')
+    t.value = t.value.upper()  # Força maiúsculas para comparação com keywords
+    t.type = reserved.get(t.value, 'ID')
     return t
 
 # Constantes
@@ -86,7 +82,7 @@ def t_INT_CONST(t):
     return t
 
 def t_STRING_CONST(t):
-    r"\'([^\\\']|(\\.))*\'"
+    r"'([^']|'')*'"
     t.value = t.value[1:-1].replace("''", "'")
     return t
 

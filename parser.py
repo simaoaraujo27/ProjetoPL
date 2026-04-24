@@ -25,16 +25,19 @@ precedence = (
     ('right', 'UMINUS'),
 )
 
+
 def p_start(p):
     r"start : optional_newlines program_unit_list optional_newlines"
     p[0] = p[2]
 
+# linhas vazias no inicio ou final do ficheiro, para permitir ficheiros com linhas em branco no inicio ou final
 def p_optional_newlines(p):
     r"""
     optional_newlines : optional_newlines NEWLINE
                       | empty
     """
     pass
+
 
 def p_program_unit_list(p):
     r"""
@@ -55,7 +58,7 @@ def p_program_unit(p):
     p[0] = p[1]
 
 def p_main_program(p):
-    r"main_program : PROGRAM ID NEWLINE statement_list END"
+    r"main_program : PROGRAM ID NEWLINE statement_list END optional_newlines"
     p[0] = Node('MainProgram', value=p[2], children=p[4])
 
 def p_subroutine_definition(p):
@@ -300,6 +303,10 @@ def p_data_val(p):
     else:
         p[0] = p[1]
 
+def p_constant_id(p):
+    r"constant : ID"
+    p[0] = Node('ID', value=p[1])
+
 def p_constant(p):
     r"""
     constant : INT_CONST
@@ -309,7 +316,6 @@ def p_constant(p):
              | FALSE
              | PLUS constant
              | MINUS constant
-             | ID
     """
     if len(p) == 2:
         p[0] = Node('Literal', value=p[1])
@@ -381,10 +387,31 @@ def p_io_format(p):
     """
     p[0] = p[1]
 
+def p_read_list(p):
+    r"""
+    read_list : read_list COMMA read_item
+              | read_item
+    """
+    if len(p) == 4:
+        p[0] = p[1] + [p[3]]
+    else:
+        p[0] = [p[1]]
+
+
+def p_read_item(p):
+    r"""
+    read_item : ID
+              | ID LPAREN arg_list RPAREN
+    """
+    if len(p) == 2:
+        p[0] = Node('ID', value=p[1])
+    else:
+        p[0] = Node('ArrayAccess', value=p[1], children=p[3])
+
 def p_read_stmt(p):
     r"""
-    read_stmt : READ STAR comma_opt print_list
-              | READ LPAREN io_unit COMMA io_format RPAREN print_list
+    read_stmt : READ STAR comma_opt read_list
+              | READ LPAREN io_unit COMMA io_format RPAREN read_list
               | READ LPAREN io_unit COMMA io_format RPAREN
     """
     if len(p) == 5:
@@ -472,10 +499,16 @@ def p_expr_func_call(p):
     """
     p[0] = Node('CallOrArrayAccess', value=p[1], children=p[3])
 
-def p_expr_primary(p):
+def p_expr_primary_id(p):
     r"""
     expr : ID
-         | INT_CONST
+    """
+    p[0] = Node('ID', value=p[1])
+
+
+def p_expr_primary_literal(p):
+    r"""
+    expr : INT_CONST
          | REAL_CONST
          | STRING_CONST
          | TRUE
@@ -523,7 +556,7 @@ def p_error(p):
     else:
         raise ParseError("Erro sintático no fim do ficheiro")
 
-parser = yacc.yacc()
+parser = yacc.yacc(write_tables=False)
 
 def parse_code(data):
     return parser.parse(data)
