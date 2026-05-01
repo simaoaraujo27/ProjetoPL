@@ -60,7 +60,7 @@ def t_GO_TO(t):
 
 # Comentários (ignorar)
 def t_COMMENT(t):
-    r'^[C\*c].*|!.*'
+    r'!.*'
     pass
 
 # Identificadores (com verificação de keywords)
