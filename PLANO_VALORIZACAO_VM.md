@@ -349,9 +349,9 @@ Como a analise semantica atual ja valida atribuicao ao nome da funcao, a segunda
 
 Sugestao de organizacao:
 
-- `ir.py`:
+- `IR/ir.py`:
   definicoes das classes do codigo intermédio
-- `ir_generator.py`:
+- `IR/ir_generator.py`:
   traducao de AST para IR
 - `vm_codegen.py`:
   traducao de IR para codigo da VM
