@@ -2,8 +2,7 @@ import unittest
 
 from lexer import LexError, lexer
 from parser import ParseError, parse_code
-from semantic import SemanticAnalyzer
-from symbol_table import SemanticError
+from semantic import SemanticAnalyzer, SemanticError
 
 
 def analyze_code(code):

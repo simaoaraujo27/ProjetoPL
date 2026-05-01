@@ -1,6 +1,3 @@
-# symbol_table.py
-
-
 class SemanticError(Exception):
     pass
 
@@ -15,9 +12,9 @@ class Symbol:
         params=None,
         return_type=None,
     ):
-        self.name = name.upper()   # Fortran é case-insensitive
-        self.kind = kind           # program, variable, array, function, subroutine, parameter, intrinsic
-        self.type = type           # INTEGER, REAL, LOGICAL...
+        self.name = name.upper()
+        self.kind = kind
+        self.type = type
         self.dimensions = dimensions or []
         self.params = params or []
         self.return_type = return_type
@@ -39,8 +36,8 @@ class SymbolTable:
     def __init__(self, name="global", parent=None):
         self.name = name
         self.parent = parent
-        self.symbols = {}   # variáveis, funções, etc.
-        self.labels = {}    # labels (DO, GOTO, etc.)
+        self.symbols = {}
+        self.labels = {}
         self.label_references = []
         self.children = {}
 
@@ -83,14 +80,7 @@ class SymbolTable:
         self.define(Symbol(name, kind="parameter", type=type))
 
     def declare_array(self, name, type=None, dimensions=None):
-        self.define(
-            Symbol(
-                name,
-                kind="array",
-                type=type,
-                dimensions=dimensions or [],
-            )
-        )
+        self.define(Symbol(name, kind="array", type=type, dimensions=dimensions or []))
 
     def require_symbol(self, name):
         found = self.lookup(name)
@@ -179,9 +169,7 @@ class SymbolTable:
         if self.label_references:
             lines.append(f"{prefix}  label_references:")
             for reference in self.label_references:
-                lines.append(
-                    f"{prefix}    {reference['kind']} -> {reference['label']}"
-                )
+                lines.append(f"{prefix}    {reference['kind']} -> {reference['label']}")
         else:
             lines.append(f"{prefix}  label_references: []")
 

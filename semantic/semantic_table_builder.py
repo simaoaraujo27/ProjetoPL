@@ -1,6 +1,4 @@
-# semantic_table_builder.py
-
-from symbol_table import SemanticError, SymbolTable
+from .symbol_table import SemanticError, SymbolTable
 
 
 class SymbolTableBuilder:
@@ -11,17 +9,6 @@ class SymbolTableBuilder:
         self._define_intrinsics()
 
     def build(self, ast):
-        """
-        Constroi a tabela de simbolos inicial.
-
-        Esta fase guarda:
-        - simbolos globais: PROGRAM, FUNCTION, SUBROUTINE e intrinsecas;
-        - scopes por unidade de programa;
-        - parametros formais;
-        - declaracoes de variaveis e arrays;
-        - labels definidas;
-        - referencias simples a labels usadas por DO e GOTO.
-        """
         program_units = self._normalize_program_units(ast)
         self._validate_program_structure(program_units)
         self._collect_global_units(program_units)
@@ -39,9 +26,7 @@ class SymbolTableBuilder:
         main_programs = [
             node
             for node in program_units
-            if node is not None
-            and hasattr(node, "type")
-            and node.type == "MainProgram"
+            if node is not None and hasattr(node, "type") and node.type == "MainProgram"
         ]
         if len(main_programs) > 1:
             raise SemanticError("Só pode existir um PROGRAM principal")
@@ -93,7 +78,6 @@ class SymbolTableBuilder:
 
             self.current_scope = self.unit_scopes.get(name.upper(), self.global_scope)
             self._define_formal_params(node)
-
             for statement in self._unit_body(node):
                 self._collect_statement_symbols(statement)
 
@@ -104,7 +88,6 @@ class SymbolTableBuilder:
                 continue
 
             self.current_scope = self.unit_scopes.get(name.upper(), self.global_scope)
-
             for statement in self._unit_body(node):
                 self._collect_statement_labels(statement)
 
@@ -115,7 +98,6 @@ class SymbolTableBuilder:
                 continue
 
             self.current_scope = self.unit_scopes.get(name.upper(), self.global_scope)
-
             for statement in self._unit_body(node):
                 self._collect_statement_label_references(statement)
 
@@ -187,7 +169,6 @@ class SymbolTableBuilder:
 
     def _define_declaration_symbols(self, declaration):
         var_type = declaration.value
-
         for identifier in declaration.children:
             if identifier.type == "ID":
                 global_symbol = self.global_scope.lookup_current(identifier.value)
@@ -199,11 +180,7 @@ class SymbolTableBuilder:
                         params=global_symbol.params,
                     )
                 else:
-                    self._define_current_symbol(
-                        identifier.value,
-                        kind="variable",
-                        type=var_type,
-                    )
+                    self._define_current_symbol(identifier.value, kind="variable", type=var_type)
             elif identifier.type == "ArrayID":
                 self._define_current_symbol(
                     identifier.value,
@@ -216,7 +193,6 @@ class SymbolTableBuilder:
         for identifier in dimension.children:
             if identifier.type != "ArrayID":
                 continue
-
             existing = self.current_scope.lookup_current(identifier.value)
             if existing:
                 if existing.kind not in ("variable", "parameter"):
@@ -235,35 +211,18 @@ class SymbolTableBuilder:
             self._define_current_symbol(param_name, kind="parameter")
 
     def _define_intrinsics(self):
-        self.global_scope.declare_intrinsic(
-            "MOD",
-            return_type="INTEGER",
-            params=["A", "P"],
-        )
+        self.global_scope.declare_intrinsic("MOD", return_type="INTEGER", params=["A", "P"])
 
     def _define_global_symbol(self, name, kind, return_type=None, params=None):
         if kind == "program":
             self.global_scope.declare_program(name)
         elif kind == "function":
-            self.global_scope.declare_function(
-                name,
-                return_type=return_type,
-                params=params or [],
-            )
+            self.global_scope.declare_function(name, return_type=return_type, params=params or [])
         elif kind == "subroutine":
             self.global_scope.declare_subroutine(name, params=params or [])
 
-    def _define_current_symbol(
-        self,
-        name,
-        kind,
-        type=None,
-        dimensions=None,
-        params=None,
-        return_type=None,
-    ):
+    def _define_current_symbol(self, name, kind, type=None, dimensions=None, params=None, return_type=None):
         existing = self.current_scope.lookup_current(name)
-
         if existing:
             if existing.kind == "parameter" and kind in ("variable", "array"):
                 existing.type = type
@@ -271,12 +230,10 @@ class SymbolTableBuilder:
                     existing.kind = "array"
                     existing.dimensions = dimensions or []
                 return
-
             if existing.kind == "variable" and kind == "array":
                 existing.kind = "array"
                 existing.dimensions = dimensions or []
                 return
-
             raise SemanticError(
                 f"Símbolo '{name.upper()}' já declarado no scope '{self.current_scope.name}'"
             )
@@ -286,17 +243,9 @@ class SymbolTableBuilder:
         elif kind == "parameter":
             self.current_scope.declare_parameter(name, type=type)
         elif kind == "array":
-            self.current_scope.declare_array(
-                name,
-                type=type,
-                dimensions=dimensions or [],
-            )
+            self.current_scope.declare_array(name, type=type, dimensions=dimensions or [])
         elif kind == "function":
-            self.current_scope.declare_function(
-                name,
-                return_type=return_type,
-                params=params or [],
-            )
+            self.current_scope.declare_function(name, return_type=return_type, params=params or [])
         elif kind == "subroutine":
             self.current_scope.declare_subroutine(name, params=params or [])
 
@@ -334,9 +283,7 @@ class SymbolTableBuilder:
     def _raise_at(self, node, message):
         if message.startswith("Linha "):
             raise SemanticError(message)
-
         lineno = getattr(node, "lineno", None)
         if lineno is None:
             raise SemanticError(message)
-
         raise SemanticError(f"Linha {lineno}: {message}")
