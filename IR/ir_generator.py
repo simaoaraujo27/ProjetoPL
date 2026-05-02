@@ -2,6 +2,7 @@ from .ir import IRProgram
 
 from .ir_do import IRDoMixin
 from .ir_expr import IRExpressionMixin
+from .ir_optimizations import optimize_ir
 from .ir_stmt import IRStatementMixin
 from .ir_utils import IRUtilsMixin
 
@@ -44,6 +45,7 @@ class IRGenerator(IRDoMixin, IRStatementMixin, IRExpressionMixin, IRUtilsMixin):
                 )
             self._generate_program_unit(program_node)
 
+        optimize_ir(self.current_program)
         return self.current_program
 
     def _generate_program_unit(self, node):

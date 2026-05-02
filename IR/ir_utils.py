@@ -81,10 +81,7 @@ class IRUtilsMixin:
             return "LOGICAL"
         if normalized in {".FALSE.", "FALSE"}:
             return "LOGICAL"
-        if isinstance(value, str) and (
-            value.startswith("'")
-            or value.startswith('"')
-        ):
+        if isinstance(value, str):
             return "CHARACTER"
         return None
 

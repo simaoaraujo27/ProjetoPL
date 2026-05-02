@@ -61,6 +61,9 @@ class IRExpressionMixin:
     def _generate_binop(self, expression):
         left = self._generate_expression(expression.children[0])
         right = self._generate_expression(expression.children[1])
+        folded = self._try_fold_binop(expression.value, left, right)
+        if folded is not None:
+            return folded
         result_type = self._infer_expression_type(expression)
         result = self.new_temp(result_type)
         self.current_program.emit("BINOP", expression.value, left, right, result=result)
@@ -68,6 +71,9 @@ class IRExpressionMixin:
 
     def _generate_unop(self, expression):
         operand = self._generate_expression(expression.children[0])
+        folded = self._try_fold_unop(expression.value, operand)
+        if folded is not None:
+            return folded
         result_type = self._infer_expression_type(expression)
         result = self.new_temp(result_type)
         self.current_program.emit("UNOP", expression.value, operand, result=result)
@@ -190,3 +196,83 @@ class IRExpressionMixin:
 
     def _generate_array_indices(self, indices):
         return [self._generate_expression(index) for index in indices]
+
+    def _try_fold_binop(self, operator, left, right):
+        if not self._is_constant(left) or not self._is_constant(right):
+            return None
+
+        left_value = self._constant_runtime_value(left)
+        right_value = self._constant_runtime_value(right)
+
+        try:
+            if operator == "+":
+                result = left_value + right_value
+            elif operator == "-":
+                result = left_value - right_value
+            elif operator == "*":
+                result = left_value * right_value
+            elif operator == ".EQ.":
+                result = left_value == right_value
+            elif operator == ".NE.":
+                result = left_value != right_value
+            elif operator == ".GT.":
+                result = left_value > right_value
+            elif operator == ".GE.":
+                result = left_value >= right_value
+            elif operator == ".LT.":
+                result = left_value < right_value
+            elif operator == ".LE.":
+                result = left_value <= right_value
+            elif operator == ".AND.":
+                result = bool(left_value) and bool(right_value)
+            elif operator == ".OR.":
+                result = bool(left_value) or bool(right_value)
+            else:
+                return None
+        except Exception:
+            return None
+
+        return self._constant_from_runtime_value(result, left.type, right.type)
+
+    def _try_fold_unop(self, operator, operand):
+        if not self._is_constant(operand):
+            return None
+
+        operand_value = self._constant_runtime_value(operand)
+
+        try:
+            if operator == "-":
+                result = -operand_value
+            elif operator == ".NOT.":
+                result = not bool(operand_value)
+            else:
+                return None
+        except Exception:
+            return None
+
+        return self._constant_from_runtime_value(result, operand.type)
+
+    def _is_constant(self, value):
+        return getattr(value, "__class__", None).__name__ == "IRConstant"
+
+    def _constant_runtime_value(self, constant):
+        value = constant.value
+        if constant.type == "LOGICAL":
+            if isinstance(value, str):
+                normalized = value.upper()
+                if normalized in {".TRUE.", "TRUE"}:
+                    return True
+                if normalized in {".FALSE.", "FALSE"}:
+                    return False
+            return bool(value)
+        return value
+
+    def _constant_from_runtime_value(self, value, *source_types):
+        if isinstance(value, bool):
+            return self._make_constant(".TRUE." if value else ".FALSE.")
+
+        if any(type_name in REAL_TYPES for type_name in source_types if type_name is not None):
+            if isinstance(value, (int, float)):
+                return self._make_constant(float(value))
+
+        return self._make_constant(value)
