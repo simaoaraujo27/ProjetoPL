@@ -51,14 +51,17 @@ class VMLayoutMixin:
         parameter_names = [
             symbol.name for symbol in scope.symbols.values() if symbol.kind == "parameter"
         ]
+        return_slot = None
 
         parameter_count = len(parameter_names)
         for position, parameter_name in enumerate(parameter_names):
             params[parameter_name] = position - parameter_count
 
-        local_index = 0
-
         global_symbol = self.symbol_table.lookup_current(scope.name)
+        if global_symbol is not None and global_symbol.kind == "function":
+            return_slot = -(parameter_count + 1)
+
+        local_index = 0
         if global_symbol is not None and global_symbol.kind == "function":
             locals_[global_symbol.name] = local_index
             local_index += 1
@@ -75,7 +78,13 @@ class VMLayoutMixin:
 
         temp_names = self._collect_section_temps(instructions)
         temps = self._build_temp_offsets(temp_names, local_index)
-        return UnitLayout(name=scope.name.upper(), params=params, locals=locals_, temps=temps)
+        return UnitLayout(
+            name=scope.name.upper(),
+            params=params,
+            locals=locals_,
+            temps=temps,
+            return_slot=return_slot,
+        )
 
     def _build_temp_offsets(self, temp_names, start_index):
         return {

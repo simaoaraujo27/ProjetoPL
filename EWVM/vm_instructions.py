@@ -167,11 +167,17 @@ class VMInstructionMixin:
 
         code = []
 
+        if instruction.result is not None:
+            code.append("PUSHI 0")
+
         for argument in args:
             code.extend(self._emit_value(argument))
 
         code.append(f"PUSHA {vm_label}")
         code.append("CALL")
+
+        if instruction.result is not None and args:
+            code.append(f"POP {len(args)}")
 
         if instruction.result is not None:
             code.extend(self._emit_store(instruction.result))
@@ -195,7 +201,10 @@ class VMInstructionMixin:
     def _emit_return(self, instruction):
         code = []
         if instruction.args:
+            if self.current_layout is None or self.current_layout.return_slot is None:
+                raise VMCodegenError("RETURN com valor fora de uma funcao")
             code.extend(self._emit_value(instruction.args[0]))
+            code.append(f"STOREL {self.current_layout.return_slot}")
         code.append("RETURN")
         return code
 

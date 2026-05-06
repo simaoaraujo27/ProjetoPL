@@ -16,6 +16,7 @@ class UnitLayout:
     params: dict[str, int] = field(default_factory=dict)
     locals: dict[str, int] = field(default_factory=dict)
     temps: dict[str, int] = field(default_factory=dict)
+    return_slot: int | None = None
 
     def lookup(self, name):
         upper_name = name.upper()
